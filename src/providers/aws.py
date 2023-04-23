@@ -1,11 +1,11 @@
 from typing import Iterable
 import boto3
-from lib import CloudIPOwnership, CloudIPResource, DNSHostDiscovery, DNSRecord
+from lib import CloudIPOwnership, CloudResource, DNSHostDiscovery, DNSRecord
 
 """
 A generator that yields CloudIPOwnership objects for all EC2 Instance public IPs in the given AWS account
 """
-def get_ec2_instance_ips(session: boto3.Session) -> Iterable[CloudIPResource]:
+def get_ec2_instance_ips(session: boto3.Session) -> Iterable[CloudResource]:
   client = session.client('ec2')
   for resource in client.describe_instances()['Reservations']:
     for instance in resource['Instances']:
@@ -17,7 +17,7 @@ def get_ec2_instance_ips(session: boto3.Session) -> Iterable[CloudIPResource]:
       if not instance.get('PublicIPAddress') and not instance.get('PublicDnsName'):
         continue
 
-      yield CloudIPResource(
+      yield CloudResource(
         ip_address=instance['PublicIpAddress'] if 'PublicIpAddress' in instance else None,
         hostname=instance['PublicDnsName'] if 'PublicDnsName' in instance else None,
         resource_type='ec2',
@@ -31,7 +31,7 @@ def get_ec2_instance_ips(session: boto3.Session) -> Iterable[CloudIPResource]:
 """
 A generator that yields CloudIPOwnership objects for all EC2 Elastic IP addresses in the given AWS account
 """
-def get_ec2_cloud_ips(session: boto3.Session) -> Iterable[CloudIPResource]:
+def get_ec2_cloud_ips(session: boto3.Session) -> Iterable[CloudResource]:
   client = session.client('ec2')
   for resource in client.describe_addresses()['Addresses']:
     if 'NetworkInterfaceId' in resource:
@@ -40,7 +40,7 @@ def get_ec2_cloud_ips(session: boto3.Session) -> Iterable[CloudIPResource]:
     else:
       hostname = None
 
-    yield CloudIPResource(
+    yield CloudResource(
       ip_address=resource['PublicIp'],
       hostname=hostname,
       resource_type='ec2',
@@ -53,12 +53,12 @@ def get_ec2_cloud_ips(session: boto3.Session) -> Iterable[CloudIPResource]:
 """
 A generator that yields CloudIPOwnership objects for all cloudfront distributions in the given AWS account
 """
-def get_aws_cloudfront(session: boto3.Session) -> Iterable[CloudIPResource]:
+def get_aws_cloudfront(session: boto3.Session) -> Iterable[CloudResource]:
   client = session.client('cloudfront')
   try:
     for resource in client.list_distributions()['DistributionList']['Items']:
 
-      yield CloudIPResource(
+      yield CloudResource(
         ip_address=None, # TODO: list ip addresses here
         hostname=resource['DomainName'].lower(),
         resource_type='cloudfront',
@@ -77,7 +77,7 @@ A generator that yields CloudIPOwnership objects for all API Gateway domains in 
 def get_api_gateways(session: boto3.Session):
   client = session.client('apigateway')
   for resource in client.get_domain_names()['items']:
-    yield CloudIPResource(
+    yield CloudResource(
       ip_address=None, # TODO: list ip addresses here
       hostname=resource['regionalDomainName'].lower(),
       resource_type='apigateway',
@@ -96,7 +96,7 @@ def get_aws_globalaccelerator(session: boto3.Session):
     for accelerator in  client.list_accelerators()['Accelerators']:
       for ip_set in accelerator['IpSets']:
         for ip_addr in ip_set['IpAddresses']:
-          yield CloudIPResource(
+          yield CloudResource(
           ip_address=ip_addr,
           hostname=accelerator['DnsName'].lower(),
           resource_type='globalaccelerator',
@@ -111,10 +111,10 @@ def get_aws_globalaccelerator(session: boto3.Session):
 """
 A generator that yields CloudIPOwnership objects for all Elastic Load Balancers in the given AWS account
 """
-def get_aws_elb(session: boto3.Session) -> Iterable[CloudIPResource]:
+def get_aws_elb(session: boto3.Session) -> Iterable[CloudResource]:
   client = session.client('elbv2')
   for resource in client.describe_load_balancers()['LoadBalancers']:
-    yield CloudIPResource(
+    yield CloudResource(
       ip_address=None,
       hostname=resource['DNSName'].lower(),
       resource_type='elb',
@@ -127,13 +127,13 @@ def get_aws_elb(session: boto3.Session) -> Iterable[CloudIPResource]:
 """
 A generator that yields CLoudIPOwnership objects for all DNS validation records for ACM certificates
 """
-def get_acm_validation_records(session: boto3.Session) -> Iterable[CloudIPResource]:
+def get_acm_validation_records(session: boto3.Session) -> Iterable[CloudResource]:
   client = session.client('acm')
   for certificate in client.list_certificates()['CertificateSummaryList']:
     cert_details = client.describe_certificate(CertificateArn=certificate['CertificateArn'])
     for validation_record in cert_details['Certificate']['DomainValidationOptions']:
       if validation_record['ValidationStatus'] == 'SUCCESS':
-        yield CloudIPResource(
+        yield CloudResource(
           ip_address=None,  # don't need this for DNS validation
           hostname=validation_record['ResourceRecord']['Value'].lower().rstrip('.'),
           resource_type='acm',

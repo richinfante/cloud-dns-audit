@@ -3,7 +3,7 @@ import ipaddress
 """
 Stores information about a cloud resource that has an IP address or hostname
 """
-class CloudIPResource:
+class CloudResource:
   def __init__(self, ip_address, hostname, resource_type, resource_id, tags, region, raw_resource):
     # host & IP
     self.ip_address = ip_address
@@ -17,7 +17,7 @@ class CloudIPResource:
     self.region = region  # the region the resource is in
 
   def __str__(self):
-    return f'<CloudIPResource resource_type={self.resource_type} ip={self.ip_address} host={self.hostname} resource_id={self.resource_id}>'
+    return f'<CloudResource resource_type={self.resource_type} ip={self.ip_address} host={self.hostname} resource_id={self.resource_id}>'
 
 """
 Stores information about a block of IP addresses that are owned by a cloud provider
@@ -57,7 +57,7 @@ class DNSRecord:
 
     # hostname that the DNS record resolves to
     # this is only set if the record is a CNAME
-    self.target_hostname = target_hostname.lower() if dns_hostname else None
+    self.target_hostname = target_hostname.lower() if target_hostname else None
 
     # the hostname that was queried
     self.dns_hostname = dns_hostname.lower() if dns_hostname else None

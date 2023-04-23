@@ -24,7 +24,9 @@ if __name__ == "__main__":
   arg_parser.add_argument('--skip-certificate-discovery', dest='skip_certificate_discovery', action='store_true', default=False)
   args = arg_parser.parse_args()
 
-  print('Enumerating cloud resources...')
+  print()
+  print('CLOUD RESOURCE DISCOVERY')
+  print()
   aws_cloud_resources = []
   if not args.skip_cloud_discovery:
     for profile_name in args.aws_profile or ['default']:
@@ -37,25 +39,6 @@ if __name__ == "__main__":
     print(aws_resource)
   print('Know about %s AWS IP address ranges' % len(AWS_IP_ADDRESSES))
   print('Know about %s Azure IP address ranges' % len(AZURE_IP_ADDRESSES))
-
-  # print()
-  # print('CLOUD RESOURCES')
-  # print()
-
-  # for resource in aws_cloud_resources:
-    # print(resource)
-    # classify ip
-    # for aws_ip in aws_ips:
-    #   if aws_ip.is_included(resource.ip_address):
-    #     print('CLASSIFIED: -> ', aws_ip)
-    #     break
-
-    # # classify host
-    # if resource.hostname:
-    #   classified = classify_cloud_hostname(resource.hostname)
-    #   if classified:
-    #     print('CLASSIFIED DOMAIN: -> ', classified)
-
 
   print()
   print('DNS DISCOVERY')
@@ -92,9 +75,9 @@ if __name__ == "__main__":
     for host in tqdmbar:
       tqdmbar.set_description(f"DNS Probe [{host.dns_hostname}]")
       # print(f"{Fore.YELLOW}{Style.DIM}Probe DNS: %s{Style.RESET_ALL}" % (host.dns_hostname))
+
       for dns_record in resolve_hostname(host.dns_hostname):
         print(f"{Fore.GREEN}Discovered DNS Entry {dns_record.record_type} for Domain: %s{Style.RESET_ALL}" % (host.dns_hostname))
-        print(f"Record: {dns_record}")
         cloud_ips = None
         cloud_host = None
 
@@ -107,17 +90,17 @@ if __name__ == "__main__":
           cloud_host = classify_cloud_hostname(dns_record.target_hostname)
 
         matching_resources = []
+        # find matching resources in our known set of cloud resources
         for resource in aws_cloud_resources:
-          # print("vs: %s and %s" % ((resource.ip_address, dns_record.ip_address), (resource.hostname, dns_record.target_hostname)))
           if resource.ip_address and resource.ip_address == dns_record.ip_address:
-            # print("FOUND MATCHING RECORD IN AWS VIA IP: %s", resource)
             matching_resources.append(resource)
 
           elif resource.hostname and resource.hostname == dns_record.target_hostname:
             matching_resources.append(resource)
-            # print("FOUND MATCHING RECORD IN AWS VIA DNSNAME: %s", resource)
 
+        # if we have matched this to a cloud resource, or we have classified as a cloud resource
         if (cloud_ips or cloud_host) or matching_resources:
+          # if no matching resources, but we have classified as cloud, then we have a problem
           if not matching_resources:
             info_str = 'unknown'
             if cloud_ips:
@@ -126,8 +109,13 @@ if __name__ == "__main__":
               info_str = '-'.join(cloud_host[0])
 
             print(f"{Fore.RED}[!! WARNING] {Style.RESET_ALL} Resource DNS record belonging to %s found that does not belong to your AWS Account: " % (info_str), dns_record)
+
+          # if we have matching resources, then this is a valid configuration
           else:
             print(f"{Fore.GREEN}[OK]{Style.RESET_ALL} Matched to resources: ",  ', '.join([str(x) for x in matching_resources]))
+
+        # if not cloud and no resources, print as informational
+        # probably a vendor or other service we are using.
         else:
           print(f"{Fore.YELLOW}[INFO]{Style.RESET_ALL} We did not detect any cloud resources that match this dns entry. It may be a third party vendor. ")
 

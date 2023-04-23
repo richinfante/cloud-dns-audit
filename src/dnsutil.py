@@ -10,6 +10,7 @@ There are other records that may contain IP addresses (MX records for example),
 we ignore them since we're focusing on public web servers / cloud resources.
 """
 def resolve_hostname(target, no_cname=False) -> List[DNSRecord]:
+  out = []
   for rec_type in ["CNAME", "A", "AAAA"]:
     try:
       # resolve the hostname using DNS
@@ -19,11 +20,11 @@ def resolve_hostname(target, no_cname=False) -> List[DNSRecord]:
       for rdata in answers:
         # A record - IPv4 address
         if rec_type == "A":
-          yield DNSRecord(ip_address=rdata.to_text(), dns_hostname=target, record_type=rec_type)
+          out.append(DNSRecord(ip_address=rdata.to_text(), dns_hostname=target, record_type=rec_type))
 
         # AAAA record - IPv6 address
         elif rec_type == "AAAA":
-          yield DNSRecord(ip_address=rdata.to_text(), dns_hostname=target, record_type=rec_type)
+          out.append(DNSRecord(ip_address=rdata.to_text(), dns_hostname=target, record_type=rec_type))
 
         # CNAME record - canonical name that points to another hostname
         # if there is a CNAME record, we don't want to resolve anything else
@@ -31,12 +32,16 @@ def resolve_hostname(target, no_cname=False) -> List[DNSRecord]:
         # If we continue, we'll get the IP addresses for the CNAME target which are usually
         # internal AWS IPs.
         elif rec_type == "CNAME" and not no_cname:
-          yield DNSRecord(target_hostname=rdata.to_text().rstrip('.'), dns_hostname=target, record_type=rec_type)
-          return # do not resolve anything past a CNAME - it's just going to route to AWS internal IPs.
+          # do not resolve anything past a CNAME - it's just going to route to AWS internal IPs.
+          return [DNSRecord(target_hostname=rdata.to_text().rstrip('.'), dns_hostname=target, record_type=rec_type)]
+
+    except dns.resolver.NoAnswer:
+      pass  # ignore no answers
 
     except Exception as err:
-      pass # ignore errors, most errors here are just "no records found" usually
+      print('DNS Error:', type(err), err)
 
+  return out
 
 """
 Helper - resolve a hostname to a list of IP addresses
