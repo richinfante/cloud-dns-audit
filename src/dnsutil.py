@@ -38,6 +38,9 @@ def resolve_hostname(target, no_cname=False) -> List[DNSRecord]:
     except dns.resolver.NoAnswer:
       pass  # ignore no answers
 
+    except dns.resolver.NXDOMAIN:
+      pass   # ignore NXDOMAIN
+
     except Exception as err:
       print('DNS Error:', type(err), err)
 

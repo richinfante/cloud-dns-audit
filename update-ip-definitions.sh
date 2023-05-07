@@ -5,4 +5,5 @@ mkdir -p ip-ranges
 curl https://ip-ranges.amazonaws.com/ip-ranges.json > ip-ranges/aws.json
 
 # azure
-curl 'https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519' > ip-ranges/azure.json
+echo visit: 'https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519'
+echo place file into: ip-ranges/azure.json
